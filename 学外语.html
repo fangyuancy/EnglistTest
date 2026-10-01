@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>考研/四六级/托福/雅思 学术文本精读交互工作台</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#f0f7ff',
+              100: '#e0effe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8'
+            },
+            subject: { bg: '#dbeafe', text: '#1e40af', border: '#3b82f6' },
+            verb: { bg: '#dcfce7', text: '#15803d', border: '#22c55e' },
+            object: { bg: '#fef3c7', text: '#b45309', border: '#f59e0b' },
+            modifier: { bg: '#f1f5f9', text: '#475569', border: '#94a3b8' },
+            logic: { bg: '#f3e8ff', text: '#7e22ce', border: '#a855f7' }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    .token {
+      transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    .token:hover {
+      transform: translateY(-1px);
+    }
+    .skeleton-dimmed {
+      opacity: 0.18;
+      filter: blur(0.4px);
+      background: transparent !important;
+      border-color: transparent !important;
+    }
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background-color: #cbd5e1;
+      border-radius: 9999px;
+    }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col antialiased">
+
+  <!-- Top Navigation Header -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md shadow-blue-500/20">
+          <i data-lucide="book-open-check" class="w-5 h-5"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <h1 class="text-base sm:text-lg font-bold text-slate-900 leading-tight">学术文本精读交互工作台</h1>
+            <span class="text-xs bg-blue-100 text-blue-700 font-semibold px-2 py-0.5 rounded-full hidden sm:inline-block">CET-4/6 · TOEFL · IELTS</span>
+          </div>
+          <p class="text-xs text-slate-500">从长难句脱水到命题逻辑与同义改写反推</p>
+        </div>
+      </div>
+      
+      <!-- Right Quick Tools -->
+      <div class="flex items-center gap-2">
+        <button id="btn-toggle-input" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition shadow-sm">
+          <i data-lucide="edit-3" class="w-4 h-4 text-blue-600"></i>
+          <span class="hidden sm:inline">输入/切换文本</span>
+          <span class="sm:hidden">换题</span>
+        </button>
+        <button id="btn-reset-tags" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-medium border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 transition shadow-sm">
+          <i data-lucide="rotate-ccw" class="w-4 h-4 text-slate-500"></i>
+          <span>重置标注</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Text Input & Preset Selection Drawer (Collapsible) -->
+  <section id="input-drawer" class="bg-white border-b border-slate-200 shadow-inner transition-all duration-300">
+    <div class="max-w-7xl mx-auto p-4 sm:p-6">
+      <div class="flex flex-col md:flex-row gap-6">
+        <!-- Presets -->
+        <div class="md:w-1/3 flex flex-col space-y-3">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-slate-600 uppercase tracking-wider">选择真题长难句预设</label>
+            <span class="text-xs text-blue-600 font-medium">包含考点解析</span>
+          </div>
+          <div class="space-y-2 max-h-56 overflow-y-auto pr-1 custom-scrollbar" id="preset-list">
+            <!-- Injected via JS -->
+          </div>
+        </div>
+
+        <!-- Custom Input Area -->
+        <div class="md:w-2/3 flex flex-col justify-between space-y-3">
+          <div>
+            <div class="flex items-center justify-between mb-1.5">
+              <label for="custom-text-input" class="text-xs font-bold text-slate-600 uppercase tracking-wider">粘贴或输入你正在精读的学术长难句/段落</label>
+              <span id="char-word-count" class="text-xs text-slate-400">0 词</span>
+            </div>
+            <textarea id="custom-text-input" rows="4" class="w-full text-sm sm:text-base p-3 rounded-xl border border-slate-300 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none leading-relaxed transition" placeholder="例如：Although aggressive reforestation efforts have accelerated, the delicate equilibrium of indigenous boreal ecosystems remains profoundly susceptible to climate anomalies..."></textarea>
+          </div>
+          <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <span class="text-xs text-slate-500 flex items-center gap-1">
+              <i data-lucide="info" class="w-3.5 h-3.5 text-slate-400"></i>
+              支持任意自定义文本，系统会自动按单词和标点进行交互切分。
+            </span>
+            <div class="flex gap-2">
+              <button id="btn-sample-fill" class="px-3 py-1.5 text-xs text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg bg-slate-50">填入示例文本</button>
+              <button id="btn-parse-text" class="px-5 py-1.5 text-xs sm:text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm shadow-blue-500/30 transition flex items-center gap-1.5">
+                <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+                开始精读实操
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Main Workbench Container -->
+  <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-1 w-full space-y-6">
+    
+    <!-- Step Navigator Tabs -->
+    <div class="bg-white rounded-2xl border border-slate-200 p-1.5 shadow-sm grid grid-cols-2 md:grid-cols-4 gap-1.5">
+      <button class="step-tab active flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition text-blue-600 bg-blue-50 border border-blue-200" data-step="1">
+        <span class="w-5 h-5 rounded-full bg-blue-600 text-white text-xs flex items-center justify-center font-bold">1</span>
+        <span>主谓宾核心骨架</span>
+      </button>
+      <button class="step-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition text-slate-600 hover:bg-slate-50" data-step="2">
+        <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-xs flex items-center justify-center font-bold">2</span>
+        <span>逻辑路标与重心</span>
+      </button>
+      <button class="step-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition text-slate-600 hover:bg-slate-50" data-step="3">
+        <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-xs flex items-center justify-center font-bold">3</span>
+        <span>同义替换连连看</span>
+      </button>
+      <button class="step-tab flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl font-medium text-xs sm:text-sm transition text-slate-600 hover:bg-slate-50" data-step="4">
+        <span class="w-5 h-5 rounded-full bg-slate-200 text-slate-700 text-xs flex items-center justify-center font-bold">4</span>
+        <span>出题陷阱反思</span>
+      </button>
+    </div>
+
+    <!-- Interactive Sentence Display Board -->
+    <section class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
+      <!-- Toolbar for current action -->
+      <div class="p-4 bg-slate-50/80 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center gap-2">
+          <span class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="layers" class="w-4 h-4 text-blue-500"></i>
+            当前研读文本
+          </span>
+          <span id="skeleton-mode-badge" class="hidden text-xs bg-amber-100 text-amber-800 font-semibold px-2 py-0.5 rounded-md flex items-center gap-1">
+            <i data-lucide="eye" class="w-3 h-3"></i> 骨架透视中（脱水模式）
+          </span>
+        </div>
+        
+        <div class="flex items-center gap-2 flex-wrap">
+          <!-- Skeleton View Toggle -->
+          <button id="btn-toggle-skeleton" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 shadow-xs transition">
+            <i data-lucide="sparkles" class="w-3.5 h-3.5 text-amber-500"></i>
+            <span>一键脱水 / 骨架透视</span>
+          </button>
+          <!-- Auto NLP Suggestion Button -->
+          <button id="btn-ai-hint" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 shadow-xs transition">
+            <i data-lucide="wand-2" class="w-3.5 h-3.5 text-blue-600"></i>
+            <span>启发式主干建议</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Tokenized Interactive Reading Surface -->
+      <div class="p-6 md:p-8">
+        <div id="sentence-canvas" class="text-base sm:text-lg lg:text-xl font-normal leading-loose tracking-wide min-h-[100px] flex flex-wrap gap-1.5 items-baseline">
+          <!-- Token spans will be rendered here dynamically -->
+        </div>
+        <p class="mt-4 text-xs text-slate-400 flex items-center gap-1">
+          <i data-lucide="mouse-pointer-click" class="w-3.5 h-3.5"></i>
+          点击任意单词即可为其赋予当前所选成分属性；已标记单词再次点击可取消。
+        </p>
+      </div>
+    </section>
+
+    <!-- STEP 1 PANEL -->
+    <div id="panel-step-1" class="step-panel space-y-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+            第一步：长难句骨架剥离（Subject + Verb + Object/Complement）
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">学术英文常在主句中穿插大量后置定语、分词状语和同位语。先选择高亮笔，点选上方文本中的核心成分。</p>
+        </div>
+
+        <!-- Highlighting Roles Selection Palette -->
+        <div class="flex flex-wrap gap-2.5 pt-1">
+          <button class="role-selector-btn active flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 transition" data-role="subject" style="background-color: #eff6ff; border-color: #3b82f6; color: #1e40af;">
+            <span class="w-3 h-3 rounded-full bg-blue-500"></span>
+            主语 (Subject)
+          </button>
+          <button class="role-selector-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition" data-role="verb">
+            <span class="w-3 h-3 rounded-full bg-green-500"></span>
+            谓语 / 系动词 (Verb)
+          </button>
+          <button class="role-selector-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition" data-role="object">
+            <span class="w-3 h-3 rounded-full bg-amber-500"></span>
+            宾语 / 表语 (Object / Comp)
+          </button>
+          <button class="role-selector-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition" data-role="modifier">
+            <span class="w-3 h-3 rounded-full bg-slate-400"></span>
+            修饰成分 / 从句 (Modifier)
+          </button>
+          <button class="role-selector-btn flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs sm:text-sm font-semibold border-2 border-slate-200 bg-white text-slate-700 hover:bg-slate-50 transition" data-role="none">
+            <i data-lucide="eraser" class="w-3.5 h-3.5 text-slate-400"></i>
+            橡皮擦 (清除)
+          </button>
+        </div>
+
+        <!-- Live Backbone Extraction Summary Box -->
+        <div class="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+          <div class="text-xs font-bold text-slate-500 mb-2 uppercase tracking-wider">当前提取的主干骨架预览：</div>
+          <div class="flex flex-wrap items-center gap-3 text-sm">
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs px-2 py-0.5 rounded bg-blue-100 text-blue-800 font-semibold">[主]</span>
+              <span id="summary-subject" class="font-semibold text-slate-800 underline decoration-blue-400 decoration-2 underline-offset-4">（尚未标记）</span>
+            </div>
+            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400"></i>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs px-2 py-0.5 rounded bg-green-100 text-green-800 font-semibold">[谓]</span>
+              <span id="summary-verb" class="font-semibold text-slate-800 underline decoration-green-400 decoration-2 underline-offset-4">（尚未标记）</span>
+            </div>
+            <i data-lucide="arrow-right" class="w-4 h-4 text-slate-400"></i>
+            <div class="flex items-center gap-1.5">
+              <span class="text-xs px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">[宾/表]</span>
+              <span id="summary-object" class="font-semibold text-slate-800 underline decoration-amber-400 decoration-2 underline-offset-4">（尚未标记）</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Feedback & Validation Alert -->
+        <div id="step-1-feedback" class="hidden p-3.5 rounded-xl text-xs sm:text-sm border transition"></div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button id="btn-verify-backbone" class="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition">
+            核对主干准确性
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 PANEL -->
+    <div id="panel-step-2" class="step-panel hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-purple-500"></span>
+            第二步：逻辑信号与作者态度重心（Logical Roadmaps）
+          </h3>
+          <p class="text-xs text-slate-500 mt-1">四六级与托福雅思常在“让步从句（Although/While）”与“转折处（However/Yet）”设局。识别逻辑路标，看清作者真正把重心压在哪半句。</p>
+        </div>
+
+        <!-- Logic Highlighter Activation -->
+        <div class="flex items-center gap-3 p-3 bg-purple-50 rounded-xl border border-purple-200">
+          <button id="btn-tag-logic" class="px-3.5 py-1.5 rounded-lg text-xs font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-xs transition flex items-center gap-1.5">
+            <i data-lucide="highlighter" class="w-3.5 h-3.5"></i>
+            激活【逻辑信号词】高亮笔
+          </button>
+          <span class="text-xs text-purple-700">请在上方文本中圈出连接词（如 Although, However, Consequently, While, Despite）</span>
+        </div>
+
+        <!-- Logic Quiz Card -->
+        <div class="p-4 rounded-xl border border-slate-200 bg-slate-50/60 space-y-3" id="logic-quiz-box">
+          <div class="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+            <i data-lucide="help-circle" class="w-4 h-4 text-blue-600"></i>
+            逻辑重音思辨挑战
+          </div>
+          <p id="logic-quiz-question" class="text-sm font-medium text-slate-800">
+            作者在这段文字中，最核心想要读者接受或关注的论点是哪一部分？
+          </p>
+          <div class="space-y-2" id="logic-quiz-options">
+            <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-400 cursor-pointer text-xs sm:text-sm transition">
+              <input type="radio" name="stance_quiz" value="concession" class="text-blue-600 focus:ring-blue-500">
+              <span id="stance-opt-a">前半部分让步陈述（如已经取得的成绩/普遍认知）</span>
+            </label>
+            <label class="flex items-center gap-2.5 p-3 rounded-xl border border-slate-200 bg-white hover:border-blue-400 cursor-pointer text-xs sm:text-sm transition">
+              <input type="radio" name="stance_quiz" value="main" class="text-blue-600 focus:ring-blue-500">
+              <span id="stance-opt-b">主句转折核心（如仍旧存在的严峻危机/作者的新发现）</span>
+            </label>
+          </div>
+          <div id="logic-quiz-feedback" class="hidden p-3 rounded-xl text-xs sm:text-sm border"></div>
+        </div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button id="btn-submit-logic" class="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-purple-600 hover:bg-purple-700 text-white shadow-sm transition">
+            提交逻辑诊断
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3 PANEL -->
+    <div id="panel-step-3" class="step-panel hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+              第三步：同义替换连连看（Paraphrase Mapping）
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">阅读考试的本质是同义改写！点击左侧原文高频词，再点击右侧对应的题目选项改写词进行配对。</p>
+          </div>
+          <!-- Add Custom Paraphrase Pair Trigger -->
+          <button id="btn-open-pair-modal" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+            <i data-lucide="plus" class="w-3.5 h-3.5 text-emerald-600"></i>
+            <span>手动添加/编辑替换词对</span>
+          </button>
+        </div>
+
+        <!-- Add Pair Inline Form (collapsible) -->
+        <div id="add-pair-form" class="hidden p-3.5 bg-emerald-50/60 rounded-xl border border-emerald-200 space-y-2">
+          <div class="text-xs font-bold text-emerald-800">为自定义文本录入同义替换映射：</div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <input type="text" id="input-src-word" placeholder="原文单词/词组 (如: fragile equilibrium)" class="text-xs p-2 rounded-lg border border-slate-300">
+            <input type="text" id="input-tgt-word" placeholder="考题改写 (如: vulnerable balance)" class="text-xs p-2 rounded-lg border border-slate-300">
+          </div>
+          <div class="flex justify-end gap-2">
+            <button id="btn-cancel-add-pair" class="px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white">取消</button>
+            <button id="btn-save-pair" class="px-3 py-1 text-xs font-semibold text-white bg-emerald-600 rounded-lg">添加配对</button>
+          </div>
+        </div>
+
+        <!-- Matching Board -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          <!-- Left: Source Words -->
+          <div class="space-y-2">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+              <span>原文核心表达 (Original)</span>
+              <span class="text-[10px] text-slate-400">点击选中</span>
+            </div>
+            <div id="paraphrase-source-col" class="space-y-2">
+              <!-- Injected by JS -->
+            </div>
+          </div>
+          <!-- Right: Paraphrased Terms -->
+          <div class="space-y-2">
+            <div class="text-xs font-bold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+              <span>考点改写释义 (Paraphrased)</span>
+              <span class="text-[10px] text-slate-400">点击配对</span>
+            </div>
+            <div id="paraphrase-target-col" class="space-y-2">
+              <!-- Injected by JS -->
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3 Message Box -->
+        <div id="paraphrase-feedback" class="hidden p-3.5 rounded-xl text-xs sm:text-sm border transition"></div>
+      </div>
+    </div>
+
+    <!-- STEP 4 PANEL -->
+    <div id="panel-step-4" class="step-panel hidden space-y-4">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm font-bold text-slate-900 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-rose-500"></span>
+              第四步：出题套路与选项陷阱反查（Trap Diagnostics）
+            </h3>
+            <p class="text-xs text-slate-500 mt-1">不仅要选出正确答案，更要为每个错误选项“定罪”（绝对化极端词 / 偷换概念 / 事实反转 / 忠实改写）。</p>
+          </div>
+          <button id="btn-custom-trap-modal" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 transition">
+            <i data-lucide="edit" class="w-3.5 h-3.5 text-rose-500"></i>
+            <span>编辑自定义考题选项</span>
+          </button>
+        </div>
+
+        <!-- Custom Trap Editor Form (collapsible) -->
+        <div id="custom-trap-form" class="hidden p-4 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+          <div class="text-xs font-bold text-slate-700">为自定义语段设计 4 个测试选项与陷阱类型：</div>
+          <div class="space-y-2 text-xs" id="custom-options-editor">
+            <!-- Dynamically populated or manually edited -->
+          </div>
+          <div class="flex justify-end gap-2">
+            <button id="btn-cancel-custom-trap" class="px-3 py-1 text-xs border border-slate-300 rounded-lg bg-white">取消</button>
+            <button id="btn-apply-custom-trap" class="px-3 py-1 text-xs font-semibold text-white bg-rose-600 rounded-lg">应用考题</button>
+          </div>
+        </div>
+
+        <!-- Options Trap Diagnostic Workspace -->
+        <div id="traps-container" class="space-y-3.5 pt-1">
+          <!-- Dynamically Injected Options -->
+        </div>
+
+        <div id="traps-feedback" class="hidden p-3.5 rounded-xl text-xs sm:text-sm border transition"></div>
+
+        <div class="flex justify-end gap-3 pt-2">
+          <button id="btn-verify-traps" class="px-5 py-2 rounded-xl text-xs sm:text-sm font-semibold bg-rose-600 hover:bg-rose-700 text-white shadow-sm transition">
+            核对陷阱诊断
+          </button>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const PRESETS = [
+      {
+        id: "preset-1",
+        title: "雅思真题 · 气候与北方生态 (IELTS Ecology)",
+        exam: "IELTS",
+        text: "Although aggressive reforestation efforts have accelerated, the delicate equilibrium of indigenous boreal ecosystems remains profoundly susceptible to climate anomalies.",
+        analysis: {
+          subjectTokens: ["equilibrium"],
+          verbTokens: ["remains"],
+          objectTokens: ["susceptible"],
+          logicTokens: ["Although"],
+          modifierTokens: ["aggressive", "reforestation", "efforts", "have", "accelerated,", "delicate", "of", "indigenous", "boreal", "ecosystems", "profoundly", "to", "climate", "anomalies."],
+          mainStanceIndex: "main",
+          stancePrompt: "作者承认造林工作加快，但强调的是原生生态系统面对气候异常依旧极端脆弱。",
+          paraphrases: [
+            { id: 1, src: "delicate equilibrium", tgt: "fragile balance (脆弱的平衡)" },
+            { id: 2, src: "profoundly susceptible", tgt: "highly vulnerable (极易受伤害的)" },
+            { id: 3, src: "indigenous ecosystems", tgt: "native natural habitats (本地原生生境)" },
+            { id: 4, src: "climate anomalies", tgt: "unprecedented weather disruptions (反常天气异动)" }
+          ],
+          traps: [
+            {
+              text: "A. Aggressive reforestation has completely stabilized indigenous boreal ecosystems.",
+              type: "absolute",
+              explanation: "【绝对化极端词陷阱】原文只是努力在加速，并没有 'completely stabilized'。"
+            },
+            {
+              text: "B. Native boreal environments continue to be gravely vulnerable to climatic deviations.",
+              type: "correct",
+              explanation: "【正确答案】精准匹配主句主干，对 delicate/susceptible 完成了学术改写。"
+            },
+            {
+              text: "C. Indigenous species have completely vanished because of accelerated weather shifts.",
+              type: "distortion",
+              explanation: "【过度夸大/无中生有】原文说 susceptible（容易受影响），被篡改为 'vanished entirely'。"
+            },
+            {
+              text: "D. Global temperature shifts have forced conservationists to abandon tree planting.",
+              type: "reversed",
+              explanation: "【事实颠倒】原文提到造林行动正在加速 (accelerated)，而非被放弃。"
+            }
+          ]
+        }
+      },
+      {
+        id: "preset-2",
+        title: "托福学术真题 · 认知神经科学 (TOEFL Cognitive)",
+        exam: "TOEFL",
+        text: "Whereas traditional neuroscientists posited that adult cerebral architecture was rigid, subsequent empirical breakthroughs demonstrate that neural pathways retain remarkable plasticity throughout senescence.",
+        analysis: {
+          subjectTokens: ["breakthroughs"],
+          verbTokens: ["demonstrate"],
+          objectTokens: ["plasticity"],
+          logicTokens: ["Whereas"],
+          modifierTokens: ["traditional", "neuroscientists", "posited", "that", "adult", "cerebral", "architecture", "was", "rigid,", "subsequent", "empirical", "neural", "pathways", "retain", "remarkable", "throughout", "senescence."],
+          mainStanceIndex: "main",
+          stancePrompt: "前面由 Whereas 引导过去学者认为大脑僵化的旧观点，主句才是作者强调的现代突破：大脑晚年依然具备可塑性。",
+          paraphrases: [
+            { id: 1, src: "empirical breakthroughs", tgt: "experimental scientific discoveries (实证研究新突破)" },
+            { id: 2, src: "remarkable plasticity", tgt: "exceptional adaptability & flexibility (显著的可塑适应性)" },
+            { id: 3, src: "throughout senescence", tgt: "during the process of aging (贯穿衰老全过程)" },
+            { id: 4, src: "rigid cerebral architecture", tgt: "inflexible brain structural organization (僵化固定的大脑构造)" }
+          ],
+          traps: [
+            {
+              text: "A. Adult brain architecture remains entirely unalterable regardless of age.",
+              type: "reversed",
+              explanation: "【陈旧观点颠倒】这是过去传统学者（traditional）的假设，与现代突破正好相反。"
+            },
+            {
+              text: "B. Modern empirical findings confirm that aging brains possess significant capacity for reconfiguration.",
+              type: "correct",
+              explanation: "【正确答案】准确契合主句观点，plasticity 改写为 capacity for reconfiguration。"
+            },
+            {
+              text: "C. Neural pathways can regenerate indefinitely to make humans biologically immortal.",
+              type: "absolute",
+              explanation: "【过度引申极端陷阱】可塑性 (plasticity) 不等于生物学永生 (immortal)。"
+            },
+            {
+              text: "D. Traditional neuroscientists successfully proved that elderly brains develop zero new pathways.",
+              type: "distortion",
+              explanation: "【偷换概念】原文传统学者只是 posited (假设/推论)，并未 successfully proved。"
+            }
+          ]
+        }
+      },
+      {
+        id: "preset-3",
+        title: "六级仔细阅读 · 宏观经济政策 (CET-6 Economy)",
+        exam: "CET-6",
+        text: "Notwithstanding substantial fiscal incentives, consumer sentiment remains remarkably subdued because rampant inflation steadily erodes disposable household incomes.",
+        analysis: {
+          subjectTokens: ["sentiment"],
+          verbTokens: ["remains"],
+          objectTokens: ["subdued"],
+          logicTokens: ["Notwithstanding", "because"],
+          modifierTokens: ["substantial", "fiscal", "incentives,", "consumer", "remarkably", "rampant", "inflation", "steadily", "erodes", "disposable", "household", "incomes."],
+          mainStanceIndex: "main",
+          stancePrompt: "Notwithstanding（尽管）引出政策补贴，主句指出消费信心依旧低迷，后接 because 因果说明通胀侵蚀收入。",
+          paraphrases: [
+            { id: 1, src: "fiscal incentives", tgt: "government subsidies & tax reliefs (财政刺激/补贴)" },
+            { id: 2, src: "subdued sentiment", tgt: "pessimistic / cautious confidence (低迷的消费信心)" },
+            { id: 3, src: "rampant inflation", tgt: "uncontrolled surging prices (失控的恶性通货膨胀)" },
+            { id: 4, src: "erodes disposable income", tgt: "depletes available spending money (蚕食可支配收入)" }
+          ],
+          traps: [
+            {
+              text: "A. Generous fiscal stimuli have completely restored public purchasing eagerness.",
+              type: "reversed",
+              explanation: "【反向颠倒】原文消费信心仍然处于低迷 (subdued)，并非恢复热情。"
+            },
+            {
+              text: "B. Continuous price hikes prevent household spending confidence from rebounding despite policy support.",
+              type: "correct",
+              explanation: "【正确答案】完美整合了 Notwithstanding 的让步与 because 的通胀侵蚀因果。"
+            },
+            {
+              text: "C. Inflation has only affected affluent households while leaving common workers unaffected.",
+              type: "distortion",
+              explanation: "【无中生有/偷换对象】原文未对贫富群体做出此项对比。"
+            },
+            {
+              text: "D. Government financial assistance has caused total collapse of retail markets.",
+              type: "distortion",
+              explanation: "【极端因果混乱】财政补贴是救市举措，并非导致崩溃的元凶。"
+            }
+          ]
+        }
+      }
+    ];
+
+    // Common linguistic heuristics for fallback auto-tagging
+    const LOGIC_WORDS = new Set(["although", "though", "even", "while", "whereas", "however", "nevertheless", "nonetheless", "despite", "notwithstanding", "because", "since", "due", "therefore", "thus", "consequently", "furthermore", "moreover", "in"]);
+    const AUX_VERBS = new Set(["is", "are", "was", "were", "remains", "remained", "seem", "seems", "become", "became", "demonstrate", "demonstrates", "reveals", "indicates", "suggests", "has", "have", "had"]);
+
+    // Application state
+    let state = {
+      rawText: "",
+      tokens: [], // Array of { id, text, cleanWord, role: null | 'subject' | 'verb' | 'object' | 'modifier' | 'logic', isPunctuation: bool }
+      currentPreset: null,
+      currentRole: "subject", // active brush
+      skeletonMode: false,
+      activeStep: 1,
+      // Paraphrase game state
+      paraphraseList: [],
+      selectedSrcId: null,
+      selectedTgtId: null,
+      matchedPairs: new Set(),
+      // Trap question state
+      trapsList: [],
+      userTrapAnswers: {} // index -> selectedType
+    };
+
+    const els = {
+      presetList: document.getElementById("preset-list"),
+      customTextInput: document.getElementById("custom-text-input"),
+      charWordCount: document.getElementById("char-word-count"),
+      btnToggleInput: document.getElementById("btn-toggle-input"),
+      inputDrawer: document.getElementById("input-drawer"),
+      btnParseText: document.getElementById("btn-parse-text"),
+      btnSampleFill: document.getElementById("btn-sample-fill"),
+      btnResetTags: document.getElementById("btn-reset-tags"),
+      sentenceCanvas: document.getElementById("sentence-canvas"),
+      btnToggleSkeleton: document.getElementById("btn-toggle-skeleton"),
+      skeletonBadge: document.getElementById("skeleton-mode-badge"),
+      btnAiHint: document.getElementById("btn-ai-hint"),
+      // Summary elements
+      summarySubject: document.getElementById("summary-subject"),
+      summaryVerb: document.getElementById("summary-verb"),
+      summaryObject: document.getElementById("summary-object"),
+      step1Feedback: document.getElementById("step-1-feedback"),
+      btnVerifyBackbone: document.getElementById("btn-verify-backbone"),
+      // Step 2
+      btnTagLogic: document.getElementById("btn-tag-logic"),
+      btnSubmitLogic: document.getElementById("btn-submit-logic"),
+      logicQuizFeedback: document.getElementById("logic-quiz-feedback"),
+      stanceOptA: document.getElementById("stance-opt-a"),
+      stanceOptB: document.getElementById("stance-opt-b"),
+      // Step 3
+      paraphraseSrcCol: document.getElementById("paraphrase-source-col"),
+      paraphraseTgtCol: document.getElementById("paraphrase-target-col"),
+      paraphraseFeedback: document.getElementById("paraphrase-feedback"),
+      btnOpenPairModal: document.getElementById("btn-open-pair-modal"),
+      addPairForm: document.getElementById("add-pair-form"),
+      btnSavePair: document.getElementById("btn-save-pair"),
+      btnCancelAddPair: document.getElementById("btn-cancel-add-pair"),
+      inputSrcWord: document.getElementById("input-src-word"),
+      inputTgtWord: document.getElementById("input-tgt-word"),
+      // Step 4
+      trapsContainer: document.getElementById("traps-container"),
+      trapsFeedback: document.getElementById("traps-feedback"),
+      btnVerifyTraps: document.getElementById("btn-verify-traps"),
+      btnCustomTrapModal: document.getElementById("btn-custom-trap-modal"),
+      customTrapForm: document.getElementById("custom-trap-form"),
+      btnApplyCustomTrap: document.getElementById("btn-apply-custom-trap"),
+      btnCancelCustomTrap: document.getElementById("btn-cancel-custom-trap"),
+      customOptionsEditor: document.getElementById("custom-options-editor")
+    };
+
+    function tokenizeText(text) {
+      // Split preserving spaces and punctuation
+      const regex = /([a-zA-Z0-9'-]+|[^\s\w])/g;
+      const matches = text.match(regex) || [];
+      return matches.map((tokenStr, idx) => {
+        const isPunct = /^[^\w\s]$/.test(tokenStr);
+        return {
+          id: idx,
+          text: tokenStr,
+          cleanWord: tokenStr.toLowerCase().replace(/[^a-z0-9]/g, ""),
+          role: null,
+          isPunctuation: isPunct
+        };
+      });
+    }
+
+    function loadPreset(presetId) {
+      const preset = PRESETS.find(p => p.id === presetId);
+      if (!preset) return;
+      state.currentPreset = preset;
+      state.rawText = preset.text;
+      els.customTextInput.value = preset.text;
+      updateWordCount();
+      initializeSession(preset.text, preset);
+      // Highlight selected preset item
+      document.querySelectorAll(".preset-item").forEach(item => {
+        item.classList.toggle("border-blue-500", item.dataset.id === presetId);
+        item.classList.toggle("bg-blue-50/50", item.dataset.id === presetId);
+      });
+    }
+
+    function initializeSession(text, presetData = null) {
+      state.rawText = text.trim();
+      state.tokens = tokenizeText(state.rawText);
+      state.skeletonMode = false;
+      els.skeletonBadge.classList.add("hidden");
+      state.matchedPairs.clear();
+      state.userTrapAnswers = {};
+
+      if (presetData) {
+        state.paraphraseList = [...presetData.analysis.paraphrases];
+        state.trapsList = [...presetData.analysis.traps];
+      } else {
+        // Generate placeholder custom paraphrase and trap items
+        state.paraphraseList = generateDefaultParaphrases(state.tokens);
+        state.trapsList = generateDefaultTraps(state.rawText);
+      }
+
+      renderCanvas();
+      updateBackboneSummary();
+      renderParaphraseGame();
+      renderTrapsSimulator();
+      clearFeedbacks();
+    }
+
+    function generateDefaultParaphrases(tokens) {
+      const cleanTokens = tokens.filter(t => !t.isPunctuation && t.cleanWord.length > 5);
+      const unique = [...new Set(cleanTokens.map(t => t.text))].slice(0, 3);
+      if (unique.length === 0) {
+        return [
+          { id: 1, src: "sample keyword", tgt: "exemplary term (示例对应改写)" }
+        ];
+      }
+      return unique.map((word, idx) => ({
+        id: idx + 1,
+        src: word,
+        tgt: `${word} (对应学术同义词/题干改写)`
+      }));
+    }
+
+    function generateDefaultTraps(text) {
+      const shortSnippet = text.length > 60 ? text.substring(0, 60) + "..." : text;
+      return [
+        {
+          text: `A. The research definitively proves all outcomes without exception: "${shortSnippet}"`,
+          type: "absolute",
+          explanation: "【绝对化极端词】含有 definitively / all / without exception 等极值词。"
+        },
+        {
+          text: `B. Evidence illustrates the core phenomenon described in the primary sentence: "${shortSnippet}"`,
+          type: "correct",
+          explanation: "【正确答案】忠实对应原句主干。"
+        },
+        {
+          text: `C. Factors have completely overturned and reversed ancient principles: "${shortSnippet}"`,
+          type: "distortion",
+          explanation: "【偷换概念/无中生有】过度推论或加入了原文并未提及的信息。"
+        },
+        {
+          text: `D. Scientists have rejected the premise outright: "${shortSnippet}"`,
+          type: "reversed",
+          explanation: "【事实反向颠倒】颠倒了原句的主谓宾因果或定性倾向。"
+        }
+      ];
+    }
+
+    function renderCanvas() {
+      els.sentenceCanvas.innerHTML = "";
+      
+      state.tokens.forEach(token => {
+        const span = document.createElement("span");
+        span.className = "token inline-block px-1.5 py-0.5 my-0.5 rounded-lg border text-slate-800 cursor-pointer font-medium text-sm sm:text-base";
+        span.dataset.id = token.id;
+        span.textContent = token.text;
+
+        // Apply styled class according to role
+        applyTokenStyling(span, token.role);
+
+        // Skeleton view dimming check
+        if (state.skeletonMode) {
+          if (token.role !== "subject" && token.role !== "verb" && token.role !== "object") {
+            span.classList.add("skeleton-dimmed");
+          }
+        }
+
+        span.addEventListener("click", () => handleTokenClick(token.id));
+        els.sentenceCanvas.appendChild(span);
+      });
+      lucide.createIcons();
+    }
+
+    function applyTokenStyling(element, role) {
+      element.className = "token inline-block px-1.5 py-0.5 my-0.5 rounded-lg border text-slate-800 cursor-pointer font-medium text-sm sm:text-base transition";
+      switch(role) {
+        case "subject":
+          element.classList.add("bg-blue-100", "border-blue-400", "text-blue-900", "font-bold", "shadow-xs");
+          break;
+        case "verb":
+          element.classList.add("bg-green-100", "border-green-400", "text-green-900", "font-bold", "shadow-xs");
+          break;
+        case "object":
+          element.classList.add("bg-amber-100", "border-amber-400", "text-amber-900", "font-bold", "shadow-xs");
+          break;
+        case "modifier":
+          element.classList.add("bg-slate-100", "border-slate-300", "text-slate-600", "italic");
+          break;
+        case "logic":
+          element.classList.add("bg-purple-100", "border-purple-400", "text-purple-900", "font-bold", "shadow-xs");
+          break;
+        default:
+          element.classList.add("bg-white", "border-transparent", "hover:border-slate-200", "hover:bg-slate-50");
+      }
+    }
+
+    function handleTokenClick(tokenId) {
+      const token = state.tokens.find(t => t.id === tokenId);
+      if (!token) return;
+
+      if (state.currentRole === "none") {
+        token.role = null;
+      } else {
+        // Toggle if clicked with same role
+        token.role = (token.role === state.currentRole) ? null : state.currentRole;
+      }
+
+      renderCanvas();
+      updateBackboneSummary();
+    }
+
+    function updateBackboneSummary() {
+      const subjects = state.tokens.filter(t => t.role === "subject").map(t => t.text).join(" ");
+      const verbs = state.tokens.filter(t => t.role === "verb").map(t => t.text).join(" ");
+      const objects = state.tokens.filter(t => t.role === "object").map(t => t.text).join(" ");
+
+      els.summarySubject.textContent = subjects || "（尚未标记）";
+      els.summaryVerb.textContent = verbs || "（尚未标记）";
+      els.summaryObject.textContent = objects || "（尚未标记）";
+    }
+
+    els.btnVerifyBackbone.addEventListener("click", () => {
+      const fb = els.step1Feedback;
+      fb.classList.remove("hidden", "bg-emerald-50", "border-emerald-200", "text-emerald-800", "bg-rose-50", "border-rose-200", "text-rose-800", "bg-blue-50", "border-blue-200", "text-blue-800");
+
+      const hasSub = state.tokens.some(t => t.role === "subject");
+      const hasVerb = state.tokens.some(t => t.role === "verb");
+      const hasObj = state.tokens.some(t => t.role === "object");
+
+      if (state.currentPreset) {
+        // Accurate comparison with curated preset
+        const expectedSubs = state.currentPreset.analysis.subjectTokens;
+        const expectedVerbs = state.currentPreset.analysis.verbTokens;
+        const expectedObjs = state.currentPreset.analysis.objectTokens;
+
+        const userSubWords = state.tokens.filter(t => t.role === "subject").map(t => t.cleanWord);
+        const userVerbWords = state.tokens.filter(t => t.role === "verb").map(t => t.cleanWord);
+        const userObjWords = state.tokens.filter(t => t.role === "object").map(t => t.cleanWord);
+
+        const subMatch = expectedSubs.some(w => userSubWords.includes(w.toLowerCase()));
+        const verbMatch = expectedVerbs.some(w => userVerbWords.includes(w.toLowerCase()));
+        const objMatch = expectedObjs.some(w => userObjWords.includes(w.toLowerCase()));
+
+        if (subMatch && verbMatch && objMatch) {
+          fb.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-900");
+          fb.innerHTML = `
+            <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+              太棒了！主谓宾骨架剥离精准无误！
+            </div>
+            <div class="mt-1 text-xs text-emerald-700">
+              脱水后核心：<b>${expectedSubs.join(" ")} + ${expectedVerbs.join(" ")} + ${expectedObjs.join(" ")}</b>。<br>
+              学术考题常常在主语后插入长定语从句干扰视线，只要锁定这一组骨架，即可免疫 80% 的干扰信息。点击“一键脱水”体验视觉去噪效果。
+            </div>
+          `;
+          markStepCompleted(1);
+        } else {
+          fb.classList.add("bg-rose-50", "border-rose-200", "text-rose-900");
+          fb.innerHTML = `
+            <div class="font-bold flex items-center gap-1.5 text-rose-800">
+              <i data-lucide="alert-triangle" class="w-4 h-4 text-rose-600"></i>
+              主干定位尚有偏差，请检查：
+            </div>
+            <ul class="list-disc list-inside mt-1 text-xs text-rose-700 space-y-0.5">
+              ${!subMatch ? '<li><b>主语</b>：警惕从句里的名词！主句真正的主语名词是哪个？</li>' : ''}
+              ${!verbMatch ? '<li><b>谓语</b>：主句的核心系动词或主动词是否被遗漏？</li>' : ''}
+              ${!objMatch ? '<li><b>宾语/表语</b>：说明状态或承接动作的核心形容词/名词是哪一个？</li>' : ''}
+            </ul>
+          `;
+        }
+      } else {
+        // Custom text heuristic feedback
+        if (hasSub && hasVerb && hasObj) {
+          fb.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-900");
+          fb.innerHTML = `
+            <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+              <i data-lucide="check-circle-2" class="w-4 h-4 text-emerald-600"></i>
+              自定义主干标注完整！
+            </div>
+            <div class="mt-1 text-xs text-emerald-700">
+              你已成功标出【主语】、【谓语】与【宾/表语】。现在可以开启上方“骨架透视”按钮，体验长句脱水后的精简阅读流。
+            </div>
+          `;
+          markStepCompleted(1);
+        } else {
+          fb.classList.add("bg-blue-50", "border-blue-200", "text-blue-900");
+          fb.innerHTML = `
+            <div class="font-bold">提示：尚未找齐完整主干</div>
+            <div class="mt-1 text-xs text-blue-700">
+              请确保在上方文本中分别圈出了至少一个【主语】、【谓语】和【宾语/表语】。若遇到困难，可点击右上角“启发式主干建议”。
+            </div>
+          `;
+        }
+      }
+      lucide.createIcons();
+    });
+
+    els.btnTagLogic.addEventListener("click", () => {
+      state.currentRole = "logic";
+      updateRolePaletteSelection();
+    });
+
+    els.btnSubmitLogic.addEventListener("click", () => {
+      const fb = els.logicQuizFeedback;
+      const checkedOpt = document.querySelector('input[name="stance_quiz"]:checked');
+      fb.classList.remove("hidden", "bg-emerald-50", "border-emerald-200", "text-emerald-800", "bg-rose-50", "border-rose-200", "text-rose-800");
+
+      if (!checkedOpt) {
+        fb.classList.add("bg-rose-50", "border-rose-200", "text-rose-800");
+        fb.innerHTML = "⚠️ 请先在上方单选框中选出作者的论点重心分布！";
+        return;
+      }
+
+      const hasLogicTagged = state.tokens.some(t => t.role === "logic");
+      const correctStance = state.currentPreset ? state.currentPreset.analysis.mainStanceIndex : "main";
+
+      if (checkedOpt.value === correctStance) {
+        fb.classList.add("bg-emerald-50", "border-emerald-200", "text-emerald-900");
+        fb.innerHTML = `
+          <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+            <i data-lucide="compass" class="w-4 h-4 text-emerald-600"></i>
+            逻辑透视完全正确！
+          </div>
+          <div class="mt-1 text-xs text-emerald-700">
+            ${state.currentPreset ? state.currentPreset.analysis.stancePrompt : '在考研、雅思与托福中，让步/从句（Although/While）仅仅是背景铺垫；作者的【真正态度】与考题题眼必然落在转折后的主句上！'}
+          </div>
+        `;
+        markStepCompleted(2);
+      } else {
+        fb.classList.add("bg-rose-50", "border-rose-200", "text-rose-900");
+        fb.innerHTML = `
+          <div class="font-bold">重心判断有偏差：</div>
+          <div class="mt-1 text-xs text-rose-700">
+            在学术论辩中，让步状语从句（如以 Although, Whereas, Despite 开头）的内容通常是公认事实或次要前提，出题者最喜欢在这里设计“以偏概全”的干扰项。真正的论述重心请看向主句！
+          </div>
+        `;
+      }
+      lucide.createIcons();
+    });
+
+    function renderParaphraseGame() {
+      els.paraphraseSrcCol.innerHTML = "";
+      els.paraphraseTgtCol.innerHTML = "";
+
+      const pairs = state.paraphraseList;
+      if (pairs.length === 0) {
+        els.paraphraseSrcCol.innerHTML = "<div class='text-xs text-slate-400 p-3'>暂无同义替换数据，可点击上方“手动添加”添加一组。</div>";
+        return;
+      }
+
+      // Shuffled targets
+      const shuffledTgt = [...pairs].sort(() => Math.random() - 0.5);
+
+      pairs.forEach(p => {
+        const item = document.createElement("div");
+        const isMatched = state.matchedPairs.has(p.id);
+        item.className = `p-3 rounded-xl border text-xs sm:text-sm font-medium cursor-pointer transition ${
+          isMatched 
+            ? 'bg-emerald-50 border-emerald-300 text-emerald-800 cursor-default line-through opacity-70' 
+            : 'bg-white border-slate-200 hover:border-blue-400 text-slate-800'
+        }`;
+        item.dataset.id = p.id;
+        item.textContent = p.src;
+        if (!isMatched) {
+          item.addEventListener("click", () => handleSrcClick(p.id, item));
+        }
+        els.paraphraseSrcCol.appendChild(item);
+      });
+
+      shuffledTgt.forEach(p => {
+        const item = document.createElement("div");
+        const isMatched = state.matchedPairs.has(p.id);
+        item.className = `p-3 rounded-xl border text-xs sm:text-sm font-medium cursor-pointer transition ${
+          isMatched 
+            ? 'bg-emerald-50 border-emerald-300 text-emerald-800 cursor-default line-through opacity-70' 
+            : 'bg-white border-slate-200 hover:border-emerald-400 text-slate-800'
+        }`;
+        item.dataset.id = p.id;
+        item.textContent = p.tgt;
+        if (!isMatched) {
+          item.addEventListener("click", () => handleTgtClick(p.id, item));
+        }
+        els.paraphraseTgtCol.appendChild(item);
+      });
+    }
+
+    function handleSrcClick(id, element) {
+      if (state.matchedPairs.has(id)) return;
+      document.querySelectorAll("#paraphrase-source-col > div").forEach(el => {
+        if (!state.matchedPairs.has(parseInt(el.dataset.id))) {
+          el.className = "p-3 rounded-xl border text-xs sm:text-sm font-medium cursor-pointer transition bg-white border-slate-200 text-slate-800";
+        }
+      });
+      element.className = "p-3 rounded-xl border-2 text-xs sm:text-sm font-semibold cursor-pointer transition bg-blue-50 border-blue-500 text-blue-900 shadow-xs";
+      state.selectedSrcId = id;
+      evaluatePairMatch();
+    }
+
+    function handleTgtClick(id, element) {
+      if (state.matchedPairs.has(id)) return;
+      document.querySelectorAll("#paraphrase-target-col > div").forEach(el => {
+        if (!state.matchedPairs.has(parseInt(el.dataset.id))) {
+          el.className = "p-3 rounded-xl border text-xs sm:text-sm font-medium cursor-pointer transition bg-white border-slate-200 text-slate-800";
+        }
+      });
+      element.className = "p-3 rounded-xl border-2 text-xs sm:text-sm font-semibold cursor-pointer transition bg-emerald-50 border-emerald-500 text-emerald-900 shadow-xs";
+      state.selectedTgtId = id;
+      evaluatePairMatch();
+    }
+
+    function evaluatePairMatch() {
+      if (state.selectedSrcId !== null && state.selectedTgtId !== null) {
+        const fb = els.paraphraseFeedback;
+        fb.classList.remove("hidden");
+
+        if (state.selectedSrcId === state.selectedTgtId) {
+          state.matchedPairs.add(state.selectedSrcId);
+          state.selectedSrcId = null;
+          state.selectedTgtId = null;
+          renderParaphraseGame();
+
+          if (state.matchedPairs.size === state.paraphraseList.length) {
+            fb.className = "p-3.5 rounded-xl text-xs sm:text-sm border bg-emerald-50 border-emerald-200 text-emerald-900 block";
+            fb.innerHTML = `
+              <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+                <i data-lucide="check-check" class="w-4 h-4 text-emerald-600"></i>
+                全部同义改写配对成功！
+              </div>
+              <div class="mt-1 text-xs text-emerald-700">
+                这些替换词是学术阅读理解中的高频靶心。建立“原文词 $\\Leftrightarrow$ 题干选项改写”的瞬间反应链，是阅读破 28 分或 7.5 分的基石！
+              </div>
+            `;
+            markStepCompleted(3);
+          } else {
+            fb.className = "p-2.5 rounded-xl text-xs border bg-blue-50 border-blue-200 text-blue-900 block";
+            fb.innerHTML = `✅ 配对正确！已完成 ${state.matchedPairs.size} / ${state.paraphraseList.length}。继续配对下一组！`;
+          }
+        } else {
+          fb.className = "p-2.5 rounded-xl text-xs border bg-rose-50 border-rose-200 text-rose-900 block";
+          fb.innerHTML = `❌ 配对未匹配，请重新思考两者的词义内涵与语义范围。`;
+          state.selectedSrcId = null;
+          state.selectedTgtId = null;
+          setTimeout(() => {
+            renderParaphraseGame();
+          }, 800);
+        }
+        lucide.createIcons();
+      }
+    }
+
+    const TRAP_TYPES = [
+      { key: "correct", label: "✅ 忠实改写 (正解)" },
+      { key: "absolute", label: "🚫 极端词/绝对化" },
+      { key: "distortion", label: "🚫 偷换概念/无中生有" },
+      { key: "reversed", label: "🚫 事实颠倒/反向推论" }
+    ];
+
+    function renderTrapsSimulator() {
+      els.trapsContainer.innerHTML = "";
+      state.trapsList.forEach((trap, idx) => {
+        const card = document.createElement("div");
+        card.className = "trap-card p-4 rounded-xl border border-slate-200 bg-white hover:border-slate-300 transition space-y-3";
+        card.dataset.index = idx;
+
+        const selectedType = state.userTrapAnswers[idx];
+
+        card.innerHTML = `
+          <div class="text-sm font-medium text-slate-800 leading-relaxed">${trap.text}</div>
+          <div class="flex flex-wrap items-center gap-2 pt-1" id="trap-btn-group-${idx}">
+            ${TRAP_TYPES.map(t => `
+              <button type="button" class="trap-type-pill text-xs px-2.5 py-1.5 rounded-lg border font-medium transition ${
+                selectedType === t.key 
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-xs' 
+                  : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }" onclick="selectTrapType(${idx}, '${t.key}')">
+                ${t.label}
+              </button>
+            `).join("")}
+          </div>
+          <div class="trap-explanation hidden mt-2 text-xs p-2.5 rounded-lg"></div>
+        `;
+        els.trapsContainer.appendChild(card);
+      });
+    }
+
+    window.selectTrapType = function(idx, typeKey) {
+      state.userTrapAnswers[idx] = typeKey;
+      renderTrapsSimulator();
+    };
+
+    els.btnVerifyTraps.addEventListener("click", () => {
+      const fb = els.trapsFeedback;
+      fb.classList.remove("hidden");
+
+      if (Object.keys(state.userTrapAnswers).length < state.trapsList.length) {
+        fb.className = "p-3 rounded-xl text-xs sm:text-sm border bg-rose-50 border-rose-200 text-rose-800 block";
+        fb.innerHTML = "⚠️ 请先完成全部 4 个选项的陷阱类型判定后再进行提交。";
+        return;
+      }
+
+      let allCorrect = true;
+      document.querySelectorAll(".trap-card").forEach((card, idx) => {
+        const item = state.trapsList[idx];
+        const userChoice = state.userTrapAnswers[idx];
+        const explBox = card.querySelector(".trap-explanation");
+        explBox.classList.remove("hidden", "bg-emerald-50", "text-emerald-900", "bg-rose-50", "text-rose-900");
+
+        if (userChoice === item.type) {
+          explBox.classList.add("bg-emerald-50", "text-emerald-900");
+          explBox.innerHTML = `<b>诊断精准：</b> ${item.explanation}`;
+        } else {
+          allCorrect = false;
+          explBox.classList.add("bg-rose-50", "text-rose-900");
+          explBox.innerHTML = `<b>诊断失误：</b> 真实类型应为【${TRAP_TYPES.find(t=>t.key===item.type)?.label}】。${item.explanation}`;
+        }
+      });
+
+      if (allCorrect) {
+        fb.className = "p-3.5 rounded-xl text-xs sm:text-sm border bg-emerald-50 border-emerald-200 text-emerald-900 block";
+        fb.innerHTML = `
+          <div class="font-bold flex items-center gap-1.5 text-emerald-800">
+            <i data-lucide="award" class="w-4 h-4 text-emerald-600"></i>
+            火眼金睛！4 大选项陷阱全数识破！
+          </div>
+          <div class="mt-1 text-xs text-emerald-700">
+            考研英语、托福与雅思的选择题往往不是“选出正确的”，而是“排除错得离谱的”。练就为错误选项快速贴上标签（极端词/无中生有/反向）的能力，你的做题速度与正确率将大幅提升。
+          </div>
+        `;
+        markStepCompleted(4);
+      } else {
+        fb.className = "p-3 rounded-xl text-xs sm:text-sm border bg-amber-50 border-amber-200 text-amber-900 block";
+        fb.innerHTML = "🧐 诊断结果已在下方各选项卡片中详细展开，请复盘错误选项的出题思路！";
+      }
+      lucide.createIcons();
+    });
+
+    document.querySelectorAll(".step-tab").forEach(tab => {
+      tab.addEventListener("click", () => {
+        const step = parseInt(tab.dataset.step);
+        switchStep(step);
+      });
+    });
+
+    function switchStep(step) {
+      state.activeStep = step;
+      document.querySelectorAll(".step-panel").forEach((panel, idx) => {
+        panel.classList.toggle("hidden", (idx + 1) !== step);
+      });
+      document.querySelectorAll(".step-tab").forEach(tab => {
+        const isCurrent = parseInt(tab.dataset.step) === step;
+        tab.classList.toggle("text-blue-600", isCurrent);
+        tab.classList.toggle("bg-blue-50", isCurrent);
+        tab.classList.toggle("border-blue-200", isCurrent);
+        tab.classList.toggle("text-slate-600", !isCurrent);
+        tab.classList.toggle("hover:bg-slate-50", !isCurrent);
+      });
+    }
+
+    function markStepCompleted(stepNum) {
+      const tab = document.querySelector(`.step-tab[data-step="${stepNum}"]`);
+      if (tab) {
+        const badge = tab.querySelector("span:first-child");
+        badge.className = "w-5 h-5 rounded-full bg-emerald-500 text-white text-xs flex items-center justify-center font-bold";
+        badge.innerHTML = "✓";
+      }
+    }
+
+    function clearFeedbacks() {
+      els.step1Feedback.classList.add("hidden");
+      els.logicQuizFeedback.classList.add("hidden");
+      els.paraphraseFeedback.classList.add("hidden");
+      els.trapsFeedback.classList.add("hidden");
+    }
+
+    els.btnToggleSkeleton.addEventListener("click", () => {
+      state.skeletonMode = !state.skeletonMode;
+      els.skeletonBadge.classList.toggle("hidden", !state.skeletonMode);
+      renderCanvas();
+    });
+
+    els.btnAiHint.addEventListener("click", () => {
+      // Automatic light heuristic hint
+      if (state.currentPreset) {
+        const p = state.currentPreset.analysis;
+        state.tokens.forEach(t => {
+          if (p.subjectTokens.some(w => t.cleanWord === w.toLowerCase())) t.role = "subject";
+          if (p.verbTokens.some(w => t.cleanWord === w.toLowerCase())) t.role = "verb";
+          if (p.objectTokens.some(w => t.cleanWord === w.toLowerCase())) t.role = "object";
+          if (p.logicTokens.some(w => t.cleanWord === w.toLowerCase())) t.role = "logic";
+        });
+      } else {
+        // Fallback for custom text
+        state.tokens.forEach((t, i) => {
+          if (LOGIC_WORDS.has(t.cleanWord)) t.role = "logic";
+          if (AUX_VERBS.has(t.cleanWord)) t.role = "verb";
+        });
+      }
+      renderCanvas();
+      updateBackboneSummary();
+      els.step1Feedback.classList.remove("hidden");
+      els.step1Feedback.className = "p-3 rounded-xl text-xs border bg-indigo-50 border-indigo-200 text-indigo-900 block";
+      els.step1Feedback.innerHTML = "💡 <b>已载入启发式语法参考标记</b>：已为你自动高亮潜在的核心动词与逻辑连接词，请核对并补充主干成分。";
+    });
+
+    document.querySelectorAll(".role-selector-btn").forEach(btn => {
+      btn.addEventListener("click", () => {
+        state.currentRole = btn.dataset.role;
+        updateRolePaletteSelection();
+      });
+    });
+
+    function updateRolePaletteSelection() {
+      document.querySelectorAll(".role-selector-btn").forEach(btn => {
+        const isSelected = btn.dataset.role === state.currentRole;
+        btn.classList.toggle("ring-2", isSelected);
+        btn.classList.toggle("ring-offset-1", isSelected);
+        btn.classList.toggle("ring-blue-400", isSelected);
+      });
+    }
+
+    els.btnToggleInput.addEventListener("click", () => {
+      els.inputDrawer.classList.toggle("hidden");
+    });
+
+    els.customTextInput.addEventListener("input", updateWordCount);
+
+    function updateWordCount() {
+      const txt = els.customTextInput.value.trim();
+      const words = txt ? txt.split(/\s+/).length : 0;
+      els.charWordCount.textContent = `${words} 词 / ${txt.length} 字符`;
+    }
+
+    els.btnParseText.addEventListener("click", () => {
+      const text = els.customTextInput.value.trim();
+      if (!text) {
+        alert("请输入或粘贴一段需要精读的英文文本！");
+        return;
+      }
+      state.currentPreset = null; // user custom mode
+      initializeSession(text);
+      els.inputDrawer.classList.add("hidden");
+      switchStep(1);
+    });
+
+    els.btnSampleFill.addEventListener("click", () => {
+      loadPreset("preset-1");
+      els.inputDrawer.classList.add("hidden");
+    });
+
+    els.btnResetTags.addEventListener("click", () => {
+      state.tokens.forEach(t => t.role = null);
+      renderCanvas();
+      updateBackboneSummary();
+      clearFeedbacks();
+    });
+
+    els.btnOpenPairModal.addEventListener("click", () => {
+      els.addPairForm.classList.toggle("hidden");
+    });
+
+    els.btnCancelAddPair.addEventListener("click", () => {
+      els.addPairForm.classList.add("hidden");
+    });
+
+    els.btnSavePair.addEventListener("click", () => {
+      const src = els.inputSrcWord.value.trim();
+      const tgt = els.inputTgtWord.value.trim();
+      if (!src || !tgt) return;
+      state.paraphraseList.push({
+        id: Date.now(),
+        src: src,
+        tgt: tgt
+      });
+      els.inputSrcWord.value = "";
+      els.inputTgtWord.value = "";
+      els.addPairForm.classList.add("hidden");
+      renderParaphraseGame();
+    });
+
+    els.btnCustomTrapModal.addEventListener("click", () => {
+      els.customTrapForm.classList.toggle("hidden");
+      renderCustomTrapEditorFields();
+    });
+
+    els.btnCancelCustomTrap.addEventListener("click", () => {
+      els.customTrapForm.classList.add("hidden");
+    });
+
+    function renderCustomTrapEditorFields() {
+      els.customOptionsEditor.innerHTML = "";
+      state.trapsList.forEach((t, i) => {
+        const row = document.createElement("div");
+        row.className = "flex flex-col sm:flex-row gap-2 items-center bg-white p-2 rounded-lg border";
+        row.innerHTML = `
+          <input type="text" class="flex-1 p-1.5 border rounded text-xs w-full" id="trap-edit-text-${i}" value="${t.text}">
+          <select class="p-1.5 border rounded text-xs bg-slate-50" id="trap-edit-type-${i}">
+            ${TRAP_TYPES.map(tp => `<option value="${tp.key}" ${tp.key === t.type ? 'selected' : ''}>${tp.label}</option>`).join("")}
+          </select>
+        `;
+        els.customOptionsEditor.appendChild(row);
+      });
+    }
+
+    els.btnApplyCustomTrap.addEventListener("click", () => {
+      state.trapsList.forEach((t, i) => {
+        const textIn = document.getElementById(`trap-edit-text-${i}`);
+        const typeIn = document.getElementById(`trap-edit-type-${i}`);
+        if (textIn && typeIn) {
+          t.text = textIn.value.trim();
+          t.type = typeIn.value;
+          t.explanation = `【用户自定义设定考点】：该选项被设为 ${TRAP_TYPES.find(tp=>tp.key===t.type)?.label}`;
+        }
+      });
+      state.userTrapAnswers = {};
+      renderTrapsSimulator();
+      els.customTrapForm.classList.add("hidden");
+    });
+
+    function populatePresetList() {
+      els.presetList.innerHTML = "";
+      PRESETS.forEach(p => {
+        const card = document.createElement("div");
+        card.className = "preset-item p-2.5 rounded-xl border border-slate-200 hover:border-blue-400 bg-white cursor-pointer transition";
+        card.dataset.id = p.id;
+        card.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="text-xs font-bold text-slate-800 truncate">${p.title}</span>
+            <span class="text-[10px] font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-600">${p.exam}</span>
+          </div>
+          <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">${p.text}</p>
+        `;
+        card.addEventListener("click", () => {
+          loadPreset(p.id);
+          els.inputDrawer.classList.add("hidden");
+        });
+        els.presetList.appendChild(card);
+      });
+    }
+
+    window.addEventListener("DOMContentLoaded", () => {
+      populatePresetList();
+      loadPreset("preset-1"); // Default to Preset 1
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
